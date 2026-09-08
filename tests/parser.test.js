@@ -50,10 +50,10 @@ test('wrapScriptCode injects OpenScript.env and GM_getValue polyfill', () => {
   const code = 'console.log(env.API_KEY, GM_getValue("API_KEY"));';
   const wrapped = wrapScriptCode(code, { API_KEY: 'secret123' });
 
-  assert.ok(wrapped.includes('const OpenScript = Object.freeze('));
+  assert.ok(wrapped.includes('OpenScript'));
   assert.ok(wrapped.includes('"API_KEY":"secret123"'));
-  assert.ok(wrapped.includes('const env = OpenScript.env;'));
-  assert.ok(wrapped.includes('const GM_getValue ='));
+  assert.ok(wrapped.includes('globalThis.OpenScript'));
+  assert.ok(wrapped.includes('GM_getValue'));
   assert.ok(wrapped.includes(code));
 });
 

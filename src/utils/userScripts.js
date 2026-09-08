@@ -14,12 +14,19 @@ export const isUserScriptsAvailable = async () => {
 export const wrapScriptCode = (code, secrets = {}) => {
   const envInjection = `
 // [OpenScript Injected Environment]
-const OpenScript = Object.freeze({
-  version: "1.0.0",
-  env: Object.freeze(${JSON.stringify(secrets)})
-});
-const env = OpenScript.env;
-const GM_getValue = (k, def) => (OpenScript.env[k] ?? def);
+(function() {
+  const secretsObj = Object.freeze(${JSON.stringify(secrets)});
+  const openScriptObj = Object.freeze({
+    version: "1.0.0",
+    env: secretsObj
+  });
+  globalThis.OpenScript = openScriptObj;
+  globalThis.env = secretsObj;
+  globalThis.GM_getValue = (k, def) => (secretsObj[k] ?? def);
+})();
+var OpenScript = globalThis.OpenScript;
+var env = globalThis.env;
+var GM_getValue = globalThis.GM_getValue;
 `;
   return `${envInjection}\n${code}`;
 };
