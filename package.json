@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:icons": "node scripts/generate-icons.js",
+    "screenshot": "node scripts/make-screenshot.js",
     "zip": "node scripts/build-zip.js",
     "test": "node --test"
   },

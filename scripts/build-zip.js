@@ -6,8 +6,15 @@ console.log('Building OpenScript extension...');
 fs.rmSync('dist', { recursive: true, force: true });
 execSync('npx vite build', { stdio: 'inherit' });
 
-// Remove unneeded master images from dist package
-['dist/icons/OpenScript_v1.png', 'dist/icons/OpenScript_v2.png', 'dist/icons/logo.png'].forEach(f => {
+// Remove unneeded master images and screenshots from dist package
+[
+  'dist/icons/OpenScript_v1.png',
+  'dist/icons/OpenScript_v2.png',
+  'dist/icons/logo.png',
+  'dist/screenshot1.png',
+  'dist/store-screenshot-1280x800.png',
+  'dist/store-screenshot-640x400.png'
+].forEach(f => {
   if (fs.existsSync(f)) fs.unlinkSync(f);
 });
 
