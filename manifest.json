@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4nOxfn7Uh3jqdKvTpngmPIzOsCvbQRamThIRxw6fswMRDflfyx2Bspxc1Aq/lQEm3ataP3GoTRCwz0h3bGJvGBu8B5Uw49AAdR6jwp5ZThAfbkBxRQmtXU8+xduji5OT2KyQKsHOj2oSjg6E05WN1vMNOdS+ehwNNCDkc/MjKBLSOdwwOpkDX0BoeC4uAmFTWFzSl/ObFSl7ViJwZVPVkvPc6F0Fxn3OTZN3uFgnT/alsHVqwojnbfC91N+oxVW/3ha869l23PhvoK68zH8Iobs+vgf8TgQOgL1x5eq9Uakn810xVaNbhJVL2I3072r1qpsAYA5ELCjSBLoi5ypLuwIDAQAB",
+  "name": "OpenScript",
+  "version": "1.0.0",
+  "description": "A lightweight user script manager for modern browsers",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "permissions": [
+    "userScripts",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
