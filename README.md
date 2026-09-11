@@ -2,13 +2,18 @@
 
 A lightweight, modern script manager built for Chrome Manifest V3 with the native `chrome.userScripts` API.
 
+**[Install from Chrome Web Store](https://chromewebstore.google.com/detail/openscript/dkelmgdchndagjemmodhkphdikhpnfol)**
+
+![OpenScript](public/screenshot1.png)
+
 ## Prerequisites
 
 OpenScript requires Chrome 138 or newer. To run scripts:
 
-1. Open `chrome://extensions`.
-2. Select **Details** on the OpenScript extension card.
-3. Enable **Allow User Scripts**.
+1. Install OpenScript from the [Chrome Web Store](https://chromewebstore.google.com/detail/openscript/dkelmgdchndagjemmodhkphdikhpnfol).
+2. Open `chrome://extensions`.
+3. Select **Details** on the OpenScript extension card.
+4. Enable **Allow User Scripts**.
 
 ## Writing scripts
 
