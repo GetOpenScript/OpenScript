@@ -12,8 +12,11 @@ execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { std
   'dist/icons/OpenScript_v2.png',
   'dist/icons/logo.png',
   'dist/screenshot1.png',
+  'dist/scripts.png',
+  'dist/secrets.png',
   'dist/store-screenshot-1280x800.png',
-  'dist/store-screenshot-640x400.png'
+  'dist/store-scripts-1280x800.png',
+  'dist/store-secrets-1280x800.png'
 ].forEach(f => {
   if (fs.existsSync(f)) fs.unlinkSync(f);
 });

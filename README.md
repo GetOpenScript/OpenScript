@@ -4,7 +4,9 @@ A lightweight, modern script manager built for Chrome Manifest V3 with the nativ
 
 **[Install from Chrome Web Store](https://chromewebstore.google.com/detail/openscript/dkelmgdchndagjemmodhkphdikhpnfol)**
 
-![OpenScript](public/screenshot1.png)
+| Empty state | Scripts | Secrets |
+| :---: | :---: | :---: |
+| ![OpenScript empty state](public/screenshot1.png) | ![OpenScript scripts](public/scripts.png) | ![OpenScript secrets](public/secrets.png) |
 
 ## Prerequisites
 

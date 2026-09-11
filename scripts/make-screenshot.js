@@ -1,32 +1,8 @@
 import sharp from 'sharp';
-import fs from 'fs';
 
 async function generate() {
-  const popupSrc = 'public/screenshot1.png';
-  const meta = await sharp(popupSrc).metadata();
-
   const canvasW = 1280;
   const canvasH = 800;
-
-  // Scale popup card to 690px height
-  const targetH = 690;
-  const targetW = Math.round((meta.width / meta.height) * targetH);
-  const rx = 14;
-
-  const maskSvg = Buffer.from(`
-    <svg width="${targetW}" height="${targetH}">
-      <rect x="0" y="0" width="${targetW}" height="${targetH}" rx="${rx}" ry="${rx}" fill="#fff" />
-    </svg>
-  `);
-
-  const roundedPopup = await sharp(popupSrc)
-    .resize(targetW, targetH, { fit: 'fill' })
-    .composite([{ input: maskSvg, blend: 'dest-in' }])
-    .png()
-    .toBuffer();
-
-  const x = Math.round((canvasW - targetW) / 2);
-  const y = Math.round((canvasH - targetH) / 2);
 
   // Rounded icon badge for top-left
   const iconRx = 8;
@@ -42,7 +18,31 @@ async function generate() {
     .png()
     .toBuffer();
 
-  const bgSvg = Buffer.from(`
+  const screenshots = [
+    ['public/screenshot1.png', 'public/store-screenshot-1280x800.png'],
+    ['public/scripts.png', 'public/store-scripts-1280x800.png'],
+    ['public/secrets.png', 'public/store-secrets-1280x800.png']
+  ];
+
+  for (const [popupSrc, output] of screenshots) {
+    const { width, height } = await sharp(popupSrc).metadata();
+    const targetH = 690;
+    const targetW = Math.round((width / height) * targetH);
+    const rx = 14;
+    const x = Math.round((canvasW - targetW) / 2);
+    const y = Math.round((canvasH - targetH) / 2);
+    const maskSvg = Buffer.from(`
+      <svg width="${targetW}" height="${targetH}">
+        <rect width="${targetW}" height="${targetH}" rx="${rx}" fill="#fff" />
+      </svg>
+    `);
+    const roundedPopup = await sharp(popupSrc)
+      .resize(targetW, targetH, { fit: 'fill' })
+      .composite([{ input: maskSvg, blend: 'dest-in' }])
+      .png()
+      .toBuffer();
+
+    const bgSvg = Buffer.from(`
     <svg width="${canvasW}" height="${canvasH}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -109,30 +109,23 @@ async function generate() {
     </svg>
   `);
 
-  const borderSvg = Buffer.from(`
+    const borderSvg = Buffer.from(`
     <svg width="${targetW}" height="${targetH}">
       <rect x="0.5" y="0.5" width="${targetW - 1}" height="${targetH - 1}" rx="${rx}" ry="${rx}"
             fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1" />
     </svg>
   `);
 
-  const final1280 = await sharp(bgSvg)
-    .composite([
-      { input: logoBuf, top: 40, left: 56 },
-      { input: roundedPopup, top: y, left: x },
-      { input: borderSvg, top: y, left: x }
-    ])
-    .png()
-    .toBuffer();
-
-  await sharp(final1280).toFile('public/store-screenshot-1280x800.png');
-  console.log('✓ Generated public/store-screenshot-1280x800.png (1280x800)');
-
-  await sharp(final1280)
-    .resize(640, 400)
-    .png()
-    .toFile('public/store-screenshot-640x400.png');
-  console.log('✓ Generated public/store-screenshot-640x400.png (640x400)');
+    await sharp(bgSvg)
+      .composite([
+        { input: logoBuf, top: 40, left: 56 },
+        { input: roundedPopup, top: y, left: x },
+        { input: borderSvg, top: y, left: x }
+      ])
+      .png()
+      .toFile(output);
+    console.log(`✓ Generated ${output} (1280x800)`);
+  }
 }
 
 generate();
