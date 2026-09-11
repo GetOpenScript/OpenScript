@@ -40,7 +40,10 @@ const init = async () => {
   await syncScripts(false);
   const [scripts, secrets] = await Promise.all([getScripts(), getSecrets()]);
   await garbageCollectScriptStorage(scripts.map(s => s.id));
-  state.scripts = scripts;
+  state.scripts = scripts.map(s => ({
+    ...s,
+    version: parseMeta(s.code || '').version,
+  }));
   state.secrets = secrets;
   render();
 };
@@ -82,6 +85,7 @@ const saveCurrentScript = async () => {
   const scriptObj = {
     id: state.editingId || `script_${Date.now()}`,
     name: meta.name,
+    version: meta.version,
     description: meta.description,
     matches: meta.matches,
     requires: meta.requires,
@@ -204,6 +208,7 @@ const renderScriptList = () => {
                 <span class="font-semibold text-xs text-slate-900 truncate cursor-pointer hover:text-sky-600" data-action="edit" data-id="${s.id}">
                   ${s.name}
                 </span>
+                ${s.version ? `<span class="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-100 text-slate-500 border border-slate-200 shrink-0">v${s.version}</span>` : ''}
               </div>
               <div class="flex items-center gap-1 shrink-0">
                 <button data-action="edit" data-id="${s.id}" class="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-sky-600 cursor-pointer" title="Edit Script">

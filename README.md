@@ -24,6 +24,7 @@ Scripts use a small metadata block followed by ordinary JavaScript. OpenScript s
 ```javascript
 // ==UserScript==
 // @name         GitHub Repo Stats
+// @version      1.0.0
 // @description  Logs repository metadata
 // @match        https://github.com/*
 // @run-at       document_idle
@@ -41,6 +42,7 @@ console.log(await response.json());
 | Directive | Description | Required |
 | :--- | :--- | :--- |
 | `@name` | Name displayed in the popup | Yes |
+| `@version` | Version displayed beside the script name | No |
 | `@match` | Chrome match pattern; repeat for multiple patterns | Yes |
 | `@description` | Short summary displayed in the popup | No |
 | `@run-at` | `document_idle`, `document_start`, or `document_end` | No |

@@ -1,6 +1,6 @@
 // Parse OpenScript's deliberately small metadata format.
 
-const SINGLE_KEYS = new Set(['name', 'description', 'run-at']);
+const SINGLE_KEYS = new Set(['name', 'version', 'description', 'run-at']);
 const MULTI_KEYS = new Set(['match', 'require']);
 
 export const parseMeta = code => {
@@ -20,6 +20,7 @@ export const parseMeta = code => {
 
   return {
     name: meta.name || 'Untitled Script',
+    version: meta.version || '',
     description: meta.description || '',
     matches: meta.match.length ? meta.match : ['*://*/*'],
     runAt: (meta['run-at'] || 'document_idle').replace('-', '_'),
