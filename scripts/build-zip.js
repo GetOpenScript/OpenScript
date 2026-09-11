@@ -1,10 +1,10 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import AdmZip from 'adm-zip';
 
 console.log('Building OpenScript extension...');
 fs.rmSync('dist', { recursive: true, force: true });
-execSync('npx vite build', { stdio: 'inherit' });
+execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { stdio: 'inherit' });
 
 // Remove unneeded master images and screenshots from dist package
 [
