@@ -1,6 +1,8 @@
-import { getScripts, saveScripts, getSecrets, saveSecrets } from './utils/storage.js';
+import {
+  getScripts, saveScripts, getSecrets, saveSecrets, garbageCollectScriptStorage,
+} from './utils/storage.js';
 import { parseMeta, getBoilerplate } from './utils/parser.js';
-import { isUserScriptsAvailable, syncUserScripts } from './utils/userScripts.js';
+import { isUserScriptsAvailable } from './utils/userScripts.js';
 import { renderIcons, icon } from './utils/icons.js';
 
 // Application State
@@ -16,6 +18,8 @@ const state = {
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
+const syncScripts = refreshRequires =>
+  chrome.runtime.sendMessage({ type: 'SYNC_SCRIPTS', refreshRequires });
 
 // Toast feedback helper
 let toastTimeout;
@@ -33,7 +37,9 @@ const showToast = (msg, isErr = false) => {
 // Initialize & Load
 const init = async () => {
   state.userScriptsReady = await isUserScriptsAvailable();
+  await syncScripts(false);
   const [scripts, secrets] = await Promise.all([getScripts(), getSecrets()]);
+  await garbageCollectScriptStorage(scripts.map(s => s.id));
   state.scripts = scripts;
   state.secrets = secrets;
   render();
@@ -51,7 +57,7 @@ const toggleScript = async id => {
   if (!s) return;
   s.enabled = !s.enabled;
   await saveScripts(state.scripts);
-  await syncUserScripts();
+  await syncScripts(false);
   render();
   showToast(`Script ${s.enabled ? 'enabled' : 'disabled'}`);
 };
@@ -60,7 +66,7 @@ const deleteScript = async id => {
   if (!confirm('Delete this user script?')) return;
   state.scripts = state.scripts.filter(s => s.id !== id);
   await saveScripts(state.scripts);
-  await syncUserScripts();
+  await Promise.all([syncScripts(false), garbageCollectScriptStorage(state.scripts.map(s => s.id))]);
   render();
   showToast('Script deleted');
 };
@@ -76,9 +82,11 @@ const saveCurrentScript = async () => {
   const scriptObj = {
     id: state.editingId || `script_${Date.now()}`,
     name: meta.name,
-    version: meta.version,
     description: meta.description,
     matches: meta.matches,
+    requires: meta.requires,
+    requireCache: existing?.requireCache || {},
+    storageToken: existing?.storageToken,
     runAt: $('#run-at-select')?.value || meta.runAt || 'document_idle',
     code,
     enabled: existing ? existing.enabled : true,
@@ -90,9 +98,12 @@ const saveCurrentScript = async () => {
     : [scriptObj, ...state.scripts];
 
   await saveScripts(state.scripts);
-  await syncUserScripts();
+  const result = await syncScripts(true);
+  state.scripts = await getScripts();
   setTab('list');
-  showToast('Script saved & synced!');
+  if (!result.success) showToast(`Saved, but not synced: ${result.errors[0]}`, true);
+  else if (result.warnings.length) showToast('Saved using cached dependencies');
+  else showToast('Script saved & synced!');
 };
 
 const addSecret = async (key, val) => {
@@ -101,7 +112,7 @@ const addSecret = async (key, val) => {
   if (!k) return showToast('Enter variable name', true);
   state.secrets[k] = v;
   await saveSecrets(state.secrets);
-  await syncUserScripts();
+  await syncScripts(false);
   render();
   showToast(`Saved secret: ${k}`);
 };
@@ -110,7 +121,7 @@ const removeSecret = async k => {
   delete state.secrets[k];
   state.revealedSecrets.delete(k);
   await saveSecrets(state.secrets);
-  await syncUserScripts();
+  await syncScripts(false);
   render();
   showToast(`Removed secret: ${k}`);
 };
@@ -193,9 +204,6 @@ const renderScriptList = () => {
                 <span class="font-semibold text-xs text-slate-900 truncate cursor-pointer hover:text-sky-600" data-action="edit" data-id="${s.id}">
                   ${s.name}
                 </span>
-                <span class="text-[10px] font-mono text-slate-600 bg-slate-100 px-1 rounded border border-slate-200 shrink-0">
-                  v${s.version || '1.0'}
-                </span>
               </div>
               <div class="flex items-center gap-1 shrink-0">
                 <button data-action="edit" data-id="${s.id}" class="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-sky-600 cursor-pointer" title="Edit Script">
@@ -220,7 +228,7 @@ const renderScriptList = () => {
           <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
             ${icon('FileCode', 'w-10 h-10 text-slate-300 mb-2')}
             <p class="text-xs font-medium text-slate-700">No user scripts found</p>
-            <p class="text-[11px] text-slate-500 mt-1 max-w-[240px]">Create a new script or import a Tampermonkey script to get started.</p>
+            <p class="text-[11px] text-slate-500 mt-1 max-w-[240px]">Create a new OpenScript to get started.</p>
             <button id="btn-empty-new" class="mt-4 bg-slate-900 text-white hover:bg-slate-800 font-semibold text-xs px-3.5 py-1.5 rounded shadow-sm cursor-pointer transition-colors">
               + New Script
             </button>
@@ -278,7 +286,7 @@ const renderEditor = () => {
 
       <!-- Notice Bar -->
       <footer class="bg-slate-100 border-t border-slate-200 px-3 py-1 text-[10px] text-slate-500 font-mono shrink-0">
-        notice: scripts run on matched URLs with synced secrets injected.
+        notice: scripts run asynchronously with env, storage, and cached @require libraries.
       </footer>
     </div>
   `;
@@ -355,7 +363,7 @@ const renderSecrets = () => {
           <p class="text-[11px] text-slate-600 font-semibold mb-1">Code usage in scripts:</p>
           <pre class="bg-slate-100 p-2 rounded text-[10px] font-mono text-emerald-800 border border-slate-200/80 overflow-x-auto">const token = OpenScript.env.GH_PAT;
 // or: const token = env.GH_PAT;
-// or: const token = GM_getValue('GH_PAT');</pre>
+const cache = await OpenScript.storage.get('cache');</pre>
         </div>
       </div>
 
@@ -498,7 +506,7 @@ window.addEventListener('focus', async () => {
   const ready = await isUserScriptsAvailable();
   if (ready !== state.userScriptsReady) {
     state.userScriptsReady = ready;
-    if (ready) await syncUserScripts();
+    if (ready) await syncScripts(false);
     render();
   }
 });

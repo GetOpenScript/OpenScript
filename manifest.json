@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "138",
   "name": "OpenScript",
   "version": "1.0.0",
   "description": "A lightweight user script manager for modern browsers",

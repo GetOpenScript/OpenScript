@@ -1,10 +1,11 @@
-// Parse & serialize Tampermonkey metadata blocks
+// Parse OpenScript's deliberately small metadata format.
 
-const MULTI_KEYS = new Set(['match', 'include', 'exclude', 'grant', 'require']);
+const SINGLE_KEYS = new Set(['name', 'description', 'run-at']);
+const MULTI_KEYS = new Set(['match', 'require']);
 
 export const parseMeta = code => {
   const block = code.match(/\/\/ ==UserScript==([\s\S]*?)\/\/ ==\/UserScript==/)?.[1] || '';
-  const meta = { matches: [], grants: [] };
+  const meta = { match: [], require: [] };
 
   for (const line of block.split('\n')) {
     const m = line.match(/\/\/\s*@([\w-]+)\s+(.*)/);
@@ -13,22 +14,16 @@ export const parseMeta = code => {
     const k = rawK.trim().toLowerCase();
     const v = rawV.trim();
 
-    if (k === 'match' || k === 'include') meta.matches.push(v);
-    else if (k === 'grant') meta.grants.push(v);
-    else if (MULTI_KEYS.has(k)) (meta[k] ??= []).push(v);
-    else meta[k] = v;
+    if (MULTI_KEYS.has(k)) meta[k].push(v);
+    else if (SINGLE_KEYS.has(k)) meta[k] = v;
   }
 
   return {
     name: meta.name || 'Untitled Script',
-    version: meta.version || '1.0.0',
     description: meta.description || '',
-    author: meta.author || '',
-    matches: meta.matches.length ? meta.matches : ['*://*/*'],
+    matches: meta.match.length ? meta.match : ['*://*/*'],
     runAt: (meta['run-at'] || 'document_idle').replace('-', '_'),
-    grants: meta.grants,
-    icon: meta.icon || '',
-    raw: meta,
+    requires: meta.require,
   };
 };
 
@@ -43,17 +38,8 @@ export const normalizeMatch = pattern => {
 export const getBoilerplate = (name = 'New Userscript') => 
 `// ==UserScript==
 // @name         ${name}
-// @version      1.0.0
-// @description  try to take over the world!
-// @author       You
 // @match        *://*/*
-// @grant        none
 // ==/UserScript==
 
-(function() {
-    'use strict';
-
-    // Access secrets via OpenScript.env or env:
-    // console.log(OpenScript.env);
-})();
+console.log('Running on', location.hostname);
 `;

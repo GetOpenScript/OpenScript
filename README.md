@@ -1,169 +1,95 @@
 # OpenScript
 
-A lightweight, modern user script manager built for Chrome Manifest V3 using the native `chrome.userScripts` API.
+A lightweight, modern script manager built for Chrome Manifest V3 with the native `chrome.userScripts` API.
 
----
+## Prerequisites
 
-## ⚡ Prerequisites
+OpenScript requires Chrome 138 or newer. To run scripts:
 
-To run user scripts in Chrome MV3:
-1. Open `chrome://extensions` in your browser.
-2. Click **Details** on the **OpenScript** extension card.
-3. Enable the **"Allow User Scripts"** toggle.
+1. Open `chrome://extensions`.
+2. Select **Details** on the OpenScript extension card.
+3. Enable **Allow User Scripts**.
 
----
+## Writing scripts
 
-## 📖 Writing Scripts Tutorial
-
-OpenScript uses standard Tampermonkey-compatible metadata headers with built-in secret injection.
-
-### 1. The Metadata Block
-
-Every user script begins with a `// ==UserScript==` block that tells OpenScript when and where to run:
-
-```javascript
-// ==UserScript==
-// @name         GitHub Notification Cleaner
-// @version      1.0.0
-// @description  Hides read notifications automatically
-// @author       YourName
-// @match        https://github.com/*
-// @run-at       document_idle
-// @grant        none
-// ==/UserScript==
-
-(function() {
-  'use strict';
-  console.log('OpenScript running on GitHub!');
-})();
-```
-
-#### Supported Header Directives
-
-| Directive | Description | Example |
-| :--- | :--- | :--- |
-| `@name` | Script title shown in OpenScript popup list | `@name My Custom Tool` |
-| `@version` | Version badge displayed in popup list | `@version 1.2.0` |
-| `@description` | Summary shown under the script title | `@description Auto-clicks accept buttons` |
-| `@author` | Author metadata | `@author Alice` |
-| `@match` / `@include` | URL patterns where script runs (supports multiple) | `@match https://*.example.com/*` |
-| `@run-at` | Injection timing: `document_idle` (default), `document_start`, `document_end` | `@run-at document_start` |
-| `@grant` | Compatibility header (e.g. `none`) | `@grant none` |
-
-> **Note on `@match` normalization:** OpenScript automatically normalizes bare URLs (e.g., `github.com/*` becomes `*://github.com/*` and `https://github.com` becomes `https://github.com/*`).
-
----
-
-### 2. Execution Timing (`@run-at`)
-
-Control when your script executes relative to page lifecycle:
-
-* **`document_idle` (Default):** Runs after the page DOM is fully built and subresources have finished loading. Best for DOM manipulation and button clicks.
-* **`document_start`:** Runs before any DOM elements are constructed or external page scripts execute. Best for early theme injection, ad/tracker blockers, or prototype overrides.
-* **`document_end`:** Runs right as the DOM content is parsed (`DOMContentLoaded`), before images and stylesheets finish loading.
-
-*(Both hyphenated `document-idle` and underscore `document_idle` formats are supported).*
-
----
-
-### 3. Using Synced Secrets & Environment Variables
-
-OpenScript allows you to store sensitive API tokens or passwords in the **Secrets** tab. Secrets are synced across your devices via `chrome.storage.sync` and injected into every active user script.
-
-#### Accessing Secrets in Code
-
-You can read secrets using any of these 3 equivalent syntaxes:
-
-```javascript
-// 1. Direct OpenScript namespace
-const token = OpenScript.env.GH_PAT;
-
-// 2. Shorthand env global
-const token = env.GH_PAT;
-
-// 3. Standard Tampermonkey GM_getValue polyfill
-const token = GM_getValue('GH_PAT', 'default_value');
-```
-
-#### Complete Example: GitHub API Fetcher with Secrets
+Scripts use a small metadata block followed by ordinary JavaScript. OpenScript supplies the async wrapper, so top-level `await`, `return`, and isolated declarations work without boilerplate.
 
 ```javascript
 // ==UserScript==
 // @name         GitHub Repo Stats
-// @version      1.0.0
-// @description  Fetches repository star count with personal token
+// @description  Logs repository metadata
 // @match        https://github.com/*
 // @run-at       document_idle
 // ==/UserScript==
 
-(async function() {
-  'use strict';
+const [, owner, repo] = location.pathname.split('/');
+if (!owner || !repo) return;
 
-  // Retrieve secret saved in OpenScript "Secrets" tab
-  const token = env.GH_PAT;
-  if (!token) {
-    console.warn('[OpenScript] Please configure GH_PAT in OpenScript Secrets tab.');
-    return;
-  }
-
-  const [, owner, repo] = location.pathname.split('/');
-  if (!owner || !repo) return;
-
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  console.log(`[OpenScript] ${data.full_name} has ${data.stargazers_count} stars!`);
-})();
+const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+console.log(await response.json());
 ```
 
----
+### Metadata
 
-### 4. Boilerplate Template
+| Directive | Description | Required |
+| :--- | :--- | :--- |
+| `@name` | Name displayed in the popup | Yes |
+| `@match` | Chrome match pattern; repeat for multiple patterns | Yes |
+| `@description` | Short summary displayed in the popup | No |
+| `@run-at` | `document_idle`, `document_start`, or `document_end` | No |
+| `@require` | HTTP(S) library URL; repeat for multiple libraries | No |
 
-When you click **+ New** in the extension popup, OpenScript gives you this clean starter template:
+The editor’s run-at selector is authoritative when a script is saved. Bare match URLs are normalized: `github.com/*` becomes `*://github.com/*`, and `https://github.com` becomes `https://github.com/*`.
+
+### Secrets and environment variables
+
+Secrets saved in the popup are synchronized through `chrome.storage.sync` and exposed to every script through either namespace:
+
+```javascript
+const token = OpenScript.env.GH_PAT;
+const sameToken = env.GH_PAT;
+```
+
+### Per-script storage
+
+Every script gets isolated, persistent storage backed by `chrome.storage.local`:
+
+```javascript
+await OpenScript.storage.set('repo_cache', { size: 1024 });
+const cached = await OpenScript.storage.get('repo_cache'); // undefined when absent
+const keys = await OpenScript.storage.list();
+await OpenScript.storage.delete('repo_cache');
+```
+
+Stored keys are scoped to the current script and survive reloads and browser restarts. Orphaned values are removed when the popup opens after their script has been deleted.
+
+### External libraries
+
+Use `@require` to cache libraries when a script is saved:
 
 ```javascript
 // ==UserScript==
-// @name         New Userscript
-// @version      1.0.0
-// @description  try to take over the world!
-// @author       You
+// @name         Alerts
 // @match        *://*/*
-// @grant        none
+// @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
 // ==/UserScript==
 
-(function() {
-    'use strict';
-
-    // Access secrets via OpenScript.env or env:
-    // console.log(OpenScript.env);
-})();
+await Swal.fire('OpenScript is ready');
 ```
 
----
+Libraries are prepended in declaration order inside the isolated `USER_SCRIPT` world. The cached source avoids page CSP restrictions and remains available offline. If a refresh fails, OpenScript uses the last cached copy; a script with a dependency that has never been cached is not registered.
 
-## 🛠️ Development & Building
+## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Run Vite dev server
 npm run dev
-
-# Run unit tests
 npm test
-
-# Generate icons from master v2 logo
+npm run build
 npm run build:icons
-
-# Build and package Chrome Web Store zip
 npm run zip
 ```
 
----
+## Privacy
 
-## 🔒 Privacy
-
-OpenScript does not track users, log data, or contact external servers. All user scripts are stored locally on your machine. See our [Privacy Policy](PRIVACY.md).
+OpenScript does not track users or send analytics. Script code and per-script state stay in `chrome.storage.local`; secrets use `chrome.storage.sync`. URLs declared with `@require` are contacted only to download their requested libraries. See the [Privacy Policy](PRIVACY.md).
