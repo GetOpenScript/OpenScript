@@ -4,6 +4,7 @@ import {
 import { parseMeta, getBoilerplate } from './utils/parser.js';
 import { isUserScriptsAvailable } from './utils/userScripts.js';
 import { renderIcons, icon } from './utils/icons.js';
+import { VERSION } from './version.js';
 
 // Application State
 const state = {
@@ -137,7 +138,7 @@ const renderHeader = () => `
       <img src="/icons/icon-16.png" class="w-4 h-4 rounded-sm" />
       <span class="font-bold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
         OpenScript
-        <span class="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-100 text-sky-700 border border-slate-200">1.0</span>
+        <span class="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-100 text-sky-700 border border-slate-200">${VERSION}</span>
       </span>
     </div>
     <nav class="flex items-center gap-1.5 text-xs font-medium">

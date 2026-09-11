@@ -1,5 +1,6 @@
 import { getScripts, saveScripts, getSecrets } from './storage.js';
 import { normalizeMatch, parseMeta } from './parser.js';
+import { VERSION } from '../version.js';
 
 const STORAGE_MESSAGE = 'OPEN_SCRIPT_STORAGE';
 
@@ -33,7 +34,7 @@ ${code}
     delete: key => call('delete', key).then(() => undefined),
     list: () => call('list').then(result => result.keys),
   });
-  const OpenScript = Object.freeze({ version: '1.0.0', env, storage });
+  const OpenScript = Object.freeze({ version: '${VERSION}', env, storage });
   globalThis.OpenScript = OpenScript;
   globalThis.env = env;
   return [OpenScript, env];
