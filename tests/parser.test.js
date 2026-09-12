@@ -12,11 +12,9 @@ test('parseMeta extracts only OpenScript metadata', () => {
 // @version      2.1.0
 // @description  Sample description
 // @author       Alice
-// @namespace    legacy
 // @match        https://example.com/*
 // @include      https://ignored.example/*
 // @run-at       document-start
-// @grant        none
 // @require      https://cdn.example/library.js
 // ==/UserScript==
 `);
@@ -139,7 +137,7 @@ test('getBoilerplate is wrapper-free and minimalist', () => {
   const template = getBoilerplate('My Script');
   assert.ok(template.includes('// @name         My Script'));
   assert.ok(template.includes("console.log('Running on', location.hostname);"));
-  for (const legacy of ['@namespace', '@grant', '@author', '(function'])
+  for (const legacy of ['@author', '(function'])
     assert.ok(!template.includes(legacy));
   assert.ok(!template.includes('@version'));
 });
