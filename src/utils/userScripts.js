@@ -1,5 +1,5 @@
 import { getScripts, saveScripts, getSecrets } from './storage.js';
-import { normalizeMatch, parseMeta } from './parser.js';
+import { normalizeMatch, parseMeta, getMetaRunAt } from './parser.js';
 import { VERSION } from '../version.js';
 
 const STORAGE_MESSAGE = 'OPEN_SCRIPT_STORAGE';
@@ -91,14 +91,16 @@ export const syncUserScripts = async ({ refreshRequires = false } = {}) => {
   scripts = scripts.map(script => {
     const requires = parseMeta(script.code || '').requires;
     const storageToken = script.storageToken || crypto.randomUUID();
+    const runAt = getMetaRunAt(script.code || '') || script.runAt || 'document_idle';
     if (requires.some(url => script.requireCache?.[url] === undefined)) missingCache = true;
     if (storageToken === script.storageToken &&
+        runAt === script.runAt &&
         JSON.stringify(requires) === JSON.stringify(script.requires || [])) return script;
     changed = true;
     const requireCache = Object.fromEntries(requires.flatMap(url =>
       script.requireCache && Object.hasOwn(script.requireCache, url) ? [[url, script.requireCache[url]]] : []
     ));
-    return { ...script, requires, requireCache, storageToken };
+    return { ...script, runAt, requires, requireCache, storageToken };
   });
 
   let warnings = [];

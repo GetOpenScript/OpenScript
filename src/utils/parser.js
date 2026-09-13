@@ -2,6 +2,13 @@
 
 const SINGLE_KEYS = new Set(['name', 'version', 'description', 'run-at']);
 const MULTI_KEYS = new Set(['match', 'require']);
+const RUN_AT_OPTIONS = new Set(['document_start', 'document_end', 'document_idle']);
+
+export const getMetaRunAt = code => {
+  const block = code.match(/\/\/ ==UserScript==([\s\S]*?)\/\/ ==\/UserScript==/)?.[1] || '';
+  const val = block.match(/\/\/\s*@run-at\s+([\w-]+)/i)?.[1]?.toLowerCase().replace('-', '_');
+  return RUN_AT_OPTIONS.has(val) ? val : null;
+};
 
 export const parseMeta = code => {
   const block = code.match(/\/\/ ==UserScript==([\s\S]*?)\/\/ ==\/UserScript==/)?.[1] || '';

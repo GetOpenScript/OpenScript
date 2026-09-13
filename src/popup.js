@@ -1,7 +1,7 @@
 import {
   getScripts, saveScripts, getSecrets, saveSecrets, garbageCollectScriptStorage,
 } from './utils/storage.js';
-import { parseMeta, getBoilerplate } from './utils/parser.js';
+import { parseMeta, getBoilerplate, getMetaRunAt } from './utils/parser.js';
 import { isUserScriptsAvailable } from './utils/userScripts.js';
 import { renderIcons, icon } from './utils/icons.js';
 import { VERSION } from './version.js';
@@ -44,6 +44,7 @@ const init = async () => {
   state.scripts = scripts.map(s => ({
     ...s,
     version: parseMeta(s.code || '').version,
+    runAt: getMetaRunAt(s.code || '') || s.runAt || 'document_idle',
   }));
   state.secrets = secrets;
   render();
@@ -92,7 +93,7 @@ const saveCurrentScript = async () => {
     requires: meta.requires,
     requireCache: existing?.requireCache || {},
     storageToken: existing?.storageToken,
-    runAt: $('#run-at-select')?.value || meta.runAt || 'document_idle',
+    runAt: getMetaRunAt(code) || $('#run-at-select')?.value || 'document_idle',
     code,
     enabled: existing ? existing.enabled : true,
     updatedAt: Date.now(),
@@ -252,7 +253,7 @@ const renderScriptList = () => {
 const renderEditor = () => {
   const script = state.scripts.find(s => s.id === state.editingId);
   const code = script ? script.code : getBoilerplate();
-  const runAt = script?.runAt || 'document_idle';
+  const runAt = getMetaRunAt(code) || script?.runAt || 'document_idle';
 
   return `
     <div class="flex flex-col flex-1 overflow-hidden bg-slate-50">
@@ -458,12 +459,23 @@ const bindEvents = () => {
   $('#btn-cancel-edit')?.addEventListener('click', () => setTab('list'));
   $('#btn-reset-boilerplate')?.addEventListener('click', () => {
     const el = $('#editor-code');
-    if (el && confirm('Reset code to default boilerplate?')) el.value = getBoilerplate();
+    if (el && confirm('Reset code to default boilerplate?')) {
+      el.value = getBoilerplate();
+      const sel = $('#run-at-select');
+      const script = state.scripts.find(s => s.id === state.editingId);
+      if (sel) sel.value = script?.runAt || 'document_idle';
+    }
   });
 
-  // Tab key indent in editor
+  // Tab key indent & metadata sync in editor
   const textarea = $('#editor-code');
   if (textarea) {
+    textarea.addEventListener('input', () => {
+      const metaRunAt = getMetaRunAt(textarea.value);
+      const sel = $('#run-at-select');
+      if (sel && metaRunAt) sel.value = metaRunAt;
+    });
+
     textarea.addEventListener('keydown', e => {
       if (e.key === 'Tab') {
         e.preventDefault();

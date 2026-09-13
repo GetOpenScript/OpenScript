@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMeta, normalizeMatch, getBoilerplate } from '../src/utils/parser.js';
+import { parseMeta, normalizeMatch, getBoilerplate, getMetaRunAt } from '../src/utils/parser.js';
 import {
   buildScriptCode, refreshRequireCaches, syncUserScripts, wrapScriptCode,
 } from '../src/utils/userScripts.js';
@@ -37,6 +37,33 @@ test('parseMeta falls back to defaults when fields are missing', () => {
   assert.deepEqual(meta.matches, ['*://*/*']);
   assert.equal(meta.runAt, 'document_idle');
   assert.deepEqual(meta.requires, []);
+});
+
+test('getMetaRunAt parses valid @run-at directives and ignores invalid or absent ones', () => {
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @run-at document-start\n// ==/UserScript=='), 'document_start');
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @run-at document_end\n// ==/UserScript=='), 'document_end');
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @run-at document-idle\n// ==/UserScript=='), 'document_idle');
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @run-at DOCUMENT-START\n// ==/UserScript=='), 'document_start');
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @name Test\n// ==/UserScript=='), null);
+  assert.equal(getMetaRunAt('// @run-at document-start outside header'), null);
+  assert.equal(getMetaRunAt('// ==UserScript==\n// @run-at invalid-timing\n// ==/UserScript=='), null);
+});
+
+test('metadata run-at header overrides selector and falls back when absent', () => {
+  const resolveRunAt = (code, selectorVal, storedVal) =>
+    getMetaRunAt(code) || selectorVal || storedVal || 'document_idle';
+
+  const codeWithHeader = '// ==UserScript==\n// @run-at document-start\n// ==/UserScript==';
+  const codeWithoutHeader = '// ==UserScript==\n// @name Script\n// ==/UserScript==';
+
+  // First time creation: metadata overrides selector
+  assert.equal(resolveRunAt(codeWithHeader, 'document_idle', undefined), 'document_start');
+  // First time creation: no metadata uses selector
+  assert.equal(resolveRunAt(codeWithoutHeader, 'document_end', undefined), 'document_end');
+  // Opening to edit: metadata overrides stored value
+  assert.equal(resolveRunAt(codeWithHeader, null, 'document_idle'), 'document_start');
+  // Opening to edit: no metadata falls back to stored value
+  assert.equal(resolveRunAt(codeWithoutHeader, null, 'document_end'), 'document_end');
 });
 
 test('normalizeMatch formats URL patterns for Chrome userScripts API', () => {

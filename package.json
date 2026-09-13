@@ -1,6 +1,6 @@
 {
   "name": "openscript",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "build:icons": "node scripts/generate-icons.js",
     "screenshot": "node scripts/make-screenshot.js",
     "zip": "node scripts/build-zip.js",
+    "publish": "node scripts/publish.js",
     "test": "node --test"
   },
   "dependencies": {
