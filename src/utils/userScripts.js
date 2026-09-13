@@ -42,7 +42,17 @@ ${code}
       type: '${FETCH_MESSAGE}', url: url.toString(), options: { ...rest, headers, body },
     });
     if (!response?.ok) throw new TypeError(response?.error || 'OpenScript fetch failed');
-    const resBody = [101, 204, 205, 304].includes(response.status) ? null : response.body;
+    let resBody = null;
+    if (![101, 204, 205, 304].includes(response.status)) {
+      if (response.base64 !== undefined) {
+        const bin = atob(response.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        resBody = bytes.buffer;
+      } else {
+        resBody = response.body ?? null;
+      }
+    }
     const res = new Response(resBody, {
       status: response.status, statusText: response.statusText, headers: response.headers,
     });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { runScriptFetch } from '../src/utils/fetch.js';
 import { wrapScriptCode } from '../src/utils/userScripts.js';
 
-test('runScriptFetch performs background fetch and serializes response', async () => {
+test('runScriptFetch performs background fetch and serializes response text', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => new Response(JSON.stringify({ hello: 'world' }), {
     status: 200,
@@ -16,9 +16,26 @@ test('runScriptFetch performs background fetch and serializes response', async (
     assert.equal(result.status, 200);
     assert.equal(result.statusText, 'OK');
     assert.ok(result.headers.some(([k, v]) => k === 'content-type' && v === 'application/json'));
-    assert.ok(result.body instanceof ArrayBuffer);
-    const decoded = JSON.parse(new TextDecoder().decode(result.body));
-    assert.deepEqual(decoded, { hello: 'world' });
+    assert.equal(typeof result.body, 'string');
+    assert.deepEqual(JSON.parse(result.body), { hello: 'world' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runScriptFetch handles binary arraybuffer responses', async () => {
+  const originalFetch = globalThis.fetch;
+  const binaryData = new Uint8Array([1, 2, 3, 4, 255]);
+  globalThis.fetch = async () => new Response(binaryData.buffer, {
+    status: 200,
+    headers: { 'content-type': 'application/octet-stream' },
+  });
+
+  try {
+    const result = await runScriptFetch('https://api.example.com/binary', { responseType: 'arraybuffer' });
+    assert.equal(result.status, 200);
+    assert.ok(result.base64);
+    assert.equal(typeof result.base64, 'string');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -48,14 +65,14 @@ test('runScriptFetch forwards errors on network failure', async () => {
   }
 });
 
-test('OpenScript.fetch runtime wrapper reconstructs a native Response', async () => {
+test('OpenScript.fetch runtime wrapper reconstructs a native Response for JSON text', async () => {
   const originalChrome = globalThis.chrome;
   const mockPayload = {
     status: 200,
     statusText: 'OK',
     headers: [['content-type', 'application/json'], ['x-powered-by', 'openscript']],
     url: 'https://api.example.com/redirected',
-    body: new TextEncoder().encode(JSON.stringify({ success: true })).buffer,
+    body: JSON.stringify({ success: true }),
   };
 
   globalThis.chrome = {
@@ -101,6 +118,52 @@ test('OpenScript.fetch runtime wrapper reconstructs a native Response', async ()
       url: 'https://api.example.com/redirected',
       header: 'openscript',
       data: { success: true },
+    });
+  } finally {
+    delete globalThis.__resolve_done;
+    globalThis.chrome = originalChrome;
+  }
+});
+
+test('OpenScript.fetch runtime wrapper decodes base64 binary responses', async () => {
+  const originalChrome = globalThis.chrome;
+  const mockPayload = {
+    status: 200,
+    statusText: 'OK',
+    headers: [['content-type', 'application/octet-stream']],
+    url: 'https://api.example.com/image.bin',
+    base64: 'AQID/w==',
+  };
+
+  globalThis.chrome = {
+    runtime: {
+      sendMessage: async () => ({ ok: true, ...mockPayload }),
+    },
+  };
+
+  let resolveDone;
+  const donePromise = new Promise(resolve => { resolveDone = resolve; });
+  globalThis.__resolve_done = resolveDone;
+
+  const scriptCode = `
+    const res = await OpenScript.fetch('https://api.example.com/image.bin', { responseType: 'arraybuffer' });
+    const buf = await res.arrayBuffer();
+    globalThis.__resolve_done({
+      ok: res.ok,
+      byteLength: buf.byteLength,
+      bytes: [...new Uint8Array(buf)],
+    });
+  `;
+
+  try {
+    const wrapped = wrapScriptCode(scriptCode);
+    const fn = new Function(wrapped);
+    fn();
+    const result = await donePromise;
+    assert.deepEqual(result, {
+      ok: true,
+      byteLength: 4,
+      bytes: [1, 2, 3, 255],
     });
   } finally {
     delete globalThis.__resolve_done;
