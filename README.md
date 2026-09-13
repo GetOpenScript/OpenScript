@@ -72,6 +72,20 @@ await OpenScript.storage.delete('repo_cache');
 
 Stored keys are scoped to the current script and survive reloads and browser restarts. Orphaned values are removed when the popup opens after their script has been deleted.
 
+### Cross-origin network requests
+
+Make cross-origin requests that bypass page CORS and CSP restrictions using the extension's privileged background worker:
+
+```javascript
+const response = await OpenScript.fetch('https://api.example.com/data', {
+  headers: { Accept: 'application/json' },
+  credentials: 'include', // includes browser cookies for the target domain
+});
+const data = await response.json();
+```
+
+`OpenScript.fetch(url, options)` returns a native `Response` instance supporting `.json()`, `.text()`, `.arrayBuffer()`, `.blob()`, `.status`, `.ok`, and `.headers`. See the [Cross-origin fetch guide](docs/fetch.md) for full options and examples.
+
 ### External libraries
 
 Use `@require` to cache libraries when a script is saved:

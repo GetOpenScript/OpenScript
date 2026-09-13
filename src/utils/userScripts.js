@@ -3,6 +3,7 @@ import { normalizeMatch, parseMeta, getMetaRunAt } from './parser.js';
 import { VERSION } from '../version.js';
 
 const STORAGE_MESSAGE = 'OPEN_SCRIPT_STORAGE';
+const FETCH_MESSAGE = 'OPEN_SCRIPT_FETCH';
 
 export const isUserScriptsAvailable = async () => {
   if (!chrome.userScripts) return false;
@@ -34,7 +35,21 @@ ${code}
     delete: key => call('delete', key).then(() => undefined),
     list: () => call('list').then(result => result.keys),
   });
-  const OpenScript = Object.freeze({ version: '${VERSION}', env, storage });
+  const fetch = async (url, options = {}) => {
+    let { headers, body, ...rest } = options;
+    if (headers instanceof Headers) headers = Object.fromEntries(headers.entries());
+    const response = await chrome.runtime.sendMessage({
+      type: '${FETCH_MESSAGE}', url: url.toString(), options: { ...rest, headers, body },
+    });
+    if (!response?.ok) throw new TypeError(response?.error || 'OpenScript fetch failed');
+    const resBody = [101, 204, 205, 304].includes(response.status) ? null : response.body;
+    const res = new Response(resBody, {
+      status: response.status, statusText: response.statusText, headers: response.headers,
+    });
+    Object.defineProperty(res, 'url', { value: response.url || url.toString() });
+    return res;
+  };
+  const OpenScript = Object.freeze({ version: '${VERSION}', env, storage, fetch });
   globalThis.OpenScript = OpenScript;
   globalThis.env = env;
   return [OpenScript, env];

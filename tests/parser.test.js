@@ -79,6 +79,7 @@ test('wrapScriptCode provides async OpenScript APIs without GM polyfills', () =>
   assert.match(wrapped, /async function\(OpenScript, env\)/);
   assert.ok(wrapped.includes('"API_KEY":"secret123"'));
   assert.ok(wrapped.includes("call('list')"));
+  assert.ok(wrapped.includes('OPEN_SCRIPT_FETCH'));
   assert.ok(wrapped.includes('storage-token'));
   assert.ok(wrapped.includes(code));
   assert.ok(!wrapped.includes('GM_getValue'));

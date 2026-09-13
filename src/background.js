@@ -1,5 +1,6 @@
 import { syncUserScripts } from './utils/userScripts.js';
 import { runScriptStorageOperation } from './utils/storage.js';
+import { runScriptFetch } from './utils/fetch.js';
 
 let syncQueue = Promise.resolve();
 const safelySync = async options => {
@@ -30,9 +31,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 chrome.runtime.onUserScriptMessage.addListener((msg, sender, sendResponse) => {
-  if (msg?.type !== 'OPEN_SCRIPT_STORAGE') return;
-  runScriptStorageOperation(msg.token, msg.operation, msg.key, msg.value)
-    .then(result => sendResponse({ ok: true, ...result }))
-    .catch(error => sendResponse({ ok: false, error: error.message }));
-  return true;
+  if (msg?.type === 'OPEN_SCRIPT_STORAGE') {
+    runScriptStorageOperation(msg.token, msg.operation, msg.key, msg.value)
+      .then(result => sendResponse({ ok: true, ...result }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (msg?.type === 'OPEN_SCRIPT_FETCH') {
+    runScriptFetch(msg.url, msg.options)
+      .then(result => sendResponse({ ok: true, ...result }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
 });
