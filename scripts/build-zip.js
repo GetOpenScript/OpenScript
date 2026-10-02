@@ -10,6 +10,7 @@ execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { std
 [
   'dist/icons/OpenScript_v1.png',
   'dist/icons/OpenScript_v2.png',
+  'dist/icons/OpenScript_v3.png',
   'dist/icons/logo.png',
   'dist/screenshot1.png',
   'dist/scripts.png',
