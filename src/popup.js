@@ -2,7 +2,7 @@ import {
   getScripts, saveScripts, getSecrets, saveSecrets, garbageCollectScriptStorage,
 } from './utils/storage.js';
 import { parseMeta, getBoilerplate, getMetaRunAt } from './utils/parser.js';
-import { isUserScriptsAvailable } from './utils/userScripts.js';
+import { isUserScriptsAvailable, getTabButtons, clickTabButton } from './utils/userScripts.js';
 import { renderIcons, icon } from './utils/icons.js';
 import { VERSION } from './version.js';
 
@@ -15,9 +15,12 @@ const state = {
   revealedSecrets: new Set(),
   userScriptsReady: true,
   search: '',
+  tabId: null,
+  buttons: {}, // scriptId -> OpenScript.button registrations in the active tab
 };
 
 const $ = sel => document.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const app = $('#app');
 const syncScripts = refreshRequires =>
   chrome.runtime.sendMessage({ type: 'SYNC_SCRIPTS', refreshRequires });
@@ -47,6 +50,9 @@ const init = async () => {
     runAt: getMetaRunAt(s.code || '') || s.runAt || 'document_idle',
   }));
   state.secrets = secrets;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  state.tabId = tab?.id ?? null;
+  if (state.tabId !== null) state.buttons = await getTabButtons(state.tabId, state.scripts);
   render();
 };
 
@@ -65,6 +71,15 @@ const toggleScript = async id => {
   await syncScripts(false);
   render();
   showToast(`Script ${s.enabled ? 'enabled' : 'disabled'}`);
+};
+
+const runButton = async (scriptId, id) => {
+  const button = state.buttons[scriptId]?.find(b => b.id === id);
+  if (!button) return;
+  try {
+    if (await clickTabButton(state.tabId, scriptId, button)) return window.close();
+  } catch {}
+  showToast('Button is no longer available on this page', true);
 };
 
 const deleteScript = async id => {
@@ -230,6 +245,15 @@ const renderScriptList = () => {
               `).join('')}
               ${(s.matches?.length > 3) ? `<span class="text-[10px] font-mono text-slate-500">+${s.matches.length - 3}</span>` : ''}
             </div>
+            ${s.enabled && state.buttons[s.id]?.length ? `
+              <div class="flex flex-wrap gap-1 pt-1.5 border-t border-slate-100">
+                ${state.buttons[s.id].map(b => `
+                  <button data-action="script-button" data-id="${s.id}" data-button="${b.id}" class="text-[11px] font-medium px-2 py-0.5 rounded border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 hover:border-sky-300 cursor-pointer transition-colors max-w-full truncate">
+                    ${esc(b.label)}
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
         `).join('') : `
           <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
@@ -445,6 +469,10 @@ const bindEvents = () => {
 
   app.querySelectorAll('[data-action="edit"]').forEach(btn => {
     btn.addEventListener('click', () => setTab('editor', btn.dataset.id));
+  });
+
+  app.querySelectorAll('[data-action="script-button"]').forEach(btn => {
+    btn.addEventListener('click', () => runButton(btn.dataset.id, +btn.dataset.button));
   });
 
   app.querySelectorAll('[data-action="delete"]').forEach(btn => {

@@ -4,6 +4,7 @@ import { VERSION } from '../version.js';
 
 const STORAGE_MESSAGE = 'OPEN_SCRIPT_STORAGE';
 const FETCH_MESSAGE = 'OPEN_SCRIPT_FETCH';
+const BUTTONS_GLOBAL = '__OpenScriptButtons';
 
 export const isUserScriptsAvailable = async () => {
   if (!chrome.userScripts) return false;
@@ -15,7 +16,30 @@ export const isUserScriptsAvailable = async () => {
   }
 };
 
-export const wrapScriptCode = (code, secrets = {}, storageToken = '') => `
+const runInScriptWorld = (target, worldId, code) =>
+  chrome.userScripts.execute({ target, worldId, js: [{ code }] });
+
+// Collect OpenScript.button registrations from each enabled script running in the tab's top frame.
+export const getTabButtons = async (tabId, scripts) => Object.fromEntries((await Promise.all(
+  scripts.filter(s => s.enabled).map(async s => {
+    try {
+      const [frame] = await runInScriptWorld({ tabId }, s.id, `globalThis.${BUTTONS_GLOBAL}?.list()`);
+      if (!frame?.result?.length) return [];
+      return [[s.id, frame.result.map(b => ({ ...b, documentId: frame.documentId }))]];
+    } catch {
+      return [];
+    }
+  }),
+)).flat());
+
+export const clickTabButton = async (tabId, scriptId, { id, documentId }) => {
+  const [frame] = await runInScriptWorld(
+    { tabId, documentIds: [documentId] }, scriptId, `globalThis.${BUTTONS_GLOBAL}?.click(${JSON.stringify(id)})`,
+  );
+  return frame?.result === true;
+};
+
+export const wrapScriptCode =(code, secrets = {}, storageToken = '') => `
 // [OpenScript runtime]
 (async function(OpenScript, env) {
   'use strict';
@@ -59,7 +83,29 @@ ${code}
     Object.defineProperty(res, 'url', { value: response.url || url.toString() });
     return res;
   };
-  const OpenScript = Object.freeze({ version: '${VERSION}', env, storage, fetch });
+  const buttons = new Map();
+  let buttonId = 0;
+  const button = (label, onClick) => {
+    if (typeof onClick !== 'function') throw new TypeError('OpenScript.button requires a click handler');
+    const id = ++buttonId;
+    buttons.set(id, { label: String(label), onClick });
+    return () => void buttons.delete(id);
+  };
+  globalThis.${BUTTONS_GLOBAL} = Object.freeze({
+    list: () => [...buttons].map(([id, { label }]) => ({ id, label })),
+    click: id => {
+      const target = buttons.get(id);
+      if (target) setTimeout(async () => {
+        try {
+          await target.onClick();
+        } catch (error) {
+          console.error('[OpenScript] Button failed:', error);
+        }
+      });
+      return !!target;
+    },
+  });
+  const OpenScript = Object.freeze({ version: '${VERSION}', env, storage, fetch, button });
   globalThis.OpenScript = OpenScript;
   globalThis.env = env;
   return [OpenScript, env];

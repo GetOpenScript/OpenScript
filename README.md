@@ -86,6 +86,22 @@ const data = await response.json();
 
 `OpenScript.fetch(url, options)` returns a native `Response` instance supporting `.json()`, `.text()`, `.arrayBuffer()`, `.blob()`, `.status`, `.ok`, and `.headers`. See the [Cross-origin fetch guide](docs/fetch.md) for full options and examples.
 
+### Popup buttons
+
+Scripts can add buttons under their entry in the popup's Scripts tab, for example to open a settings panel or trigger an action on the current page:
+
+```javascript
+OpenScript.button('Settings', () => openSettingsPanel());
+
+if (location.pathname.startsWith('/issues'))
+  OpenScript.button('Export issues', exportIssues);
+
+const remove = OpenScript.button('One-time action', doThing);
+remove(); // takes the button away again
+```
+
+Buttons are registered at runtime, so they show only for scripts running on the active tab. A script that matches `*://*/*` therefore shows its buttons on any regular web page, but not on pages where Chrome blocks user scripts, such as `chrome://` pages and the Chrome Web Store. Clicking a button runs its handler inside the page in the script's world, then closes the popup.
+
 ### External libraries
 
 Use `@require` to cache libraries when a script is saved:
