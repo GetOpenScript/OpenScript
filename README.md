@@ -110,7 +110,7 @@ Use `@require` to cache libraries when a script is saved:
 // ==UserScript==
 // @name         Alerts
 // @match        *://*/*
-// @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
+// @require      https://cdn.jsdelivr.net/npm/sweetalert2@11.26.26
 // ==/UserScript==
 
 await Swal.fire('OpenScript is ready');
