@@ -21,7 +21,7 @@
     "postcss": "8.5.32",
     "sharp": "0.35.5",
     "tailwindcss": "3.4.19",
-    "vite": "5.4.21",
+    "vite": "6.4.4",
     "vite-plugin-web-extension": "4.5.1"
   }
 }
